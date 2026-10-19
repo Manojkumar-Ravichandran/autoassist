@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+AutoAssist contains an administrator web console and an installable mobile vehicle guide. The web console and mobile client share the same MongoDB vehicle records. Mobile devices keep a local copy of active records and can search and read them offline after the first successful sync.
 
-## Getting Started
+## Run locally
 
-First, run the development server:
+1. Install Node.js 20+ and MongoDB, then run `npm install`.
+2. Copy `.env.local.example` to `.env.local` and set the values below.
+3. Start MongoDB and run `npm run dev`.
+4. Open `http://localhost:3000/login` for the admin and `http://localhost:3000/mobile` for the mobile guide.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Required environment values:
+
+```env
+MONGODB_URI=mongodb://127.0.0.1:27017/autoassist
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=replace-with-a-long-unique-password
+ADMIN_SESSION_SECRET=replace-with-a-random-secret-at-least-32-characters
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set a unique administrator password and session secret before deployment. Without administrator credentials configured, sign-in is intentionally unavailable. Deploy the Next.js server and MongoDB on an HTTPS host reachable by the phones; configure `MONGODB_URI` to that same database. Admin-created or updated vehicle masters then appear in the mobile sync endpoint. Mobile sync downloads active vehicle records; offline access works for records downloaded previously on that device. Reconnect to refresh after admin changes.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Install on Android
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The mobile route is a Progressive Web App. Serve it from HTTPS, open `/mobile` in Android Chrome, choose **Install app** (or **Add to Home screen**), and launch AutoAssist from the home screen. The first launch needs a connection to sync records; later launches can use the saved catalog offline. Browser storage can be cleared by Android, so reconnect periodically to refresh the local copy.
 
-## Learn More
+The mobile guide is also available as an installable PWA at `/mobile`. After building and publishing a signed APK, the website download page at `/download` automatically exposes the Android download link.
 
-To learn more about Next.js, take a look at the following resources:
+### Build a native Android app with Capacitor
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Capacitor wraps the mobile guide in an Android shell. The Android Studio project is in `android/`. Set `CAPACITOR_SERVER_URL` to the public HTTPS URL ending in `/mobile`, then run `npm run android:sync` and `npm run android:open`. In Android Studio choose **Build > Generate Signed Bundle / APK > APK** and configure your signing key. Copy the signed APK to `public/downloads/AutoAssist.apk` and redeploy the website; `/download` will then show the APK download button. The app uses the deployed site for its interface and sync; previously synced vehicle records stay in local storage for offline lookup. Do not distribute a release APK built with the default emulator URL.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Build
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Run `npm run build` for a production build and `npm run start` to serve it. The app requires MongoDB connectivity for admin data and mobile sync.

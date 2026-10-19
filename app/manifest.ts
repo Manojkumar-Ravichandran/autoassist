@@ -1,0 +1,2 @@
+import type { MetadataRoute } from "next";
+export default function manifest(): MetadataRoute.Manifest { return { name: "AutoAssist Vehicle Guide", short_name: "AutoAssist", description: "Offline vehicle service and maintenance guide", start_url: "/mobile", display: "standalone", background_color: "#f4f6fa", theme_color: "#0f172a", icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" }] }; }

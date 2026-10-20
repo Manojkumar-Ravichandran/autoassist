@@ -18,6 +18,9 @@ export default function MobileApp() {
   const [selected, setSelected] = useState<Vehicle | null>(null);
   const [online, setOnline] = useState(true);
   const [syncedAt, setSyncedAt] = useState("");
+  const [syncError, setSyncError] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [ready, setReady] = useState(false);
   useEffect(() => {
     setOnline(navigator.onLine);
@@ -29,13 +32,41 @@ export default function MobileApp() {
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
   }, []);
-  useEffect(() => { if (online) fetch(`${window.__AUTOASSIST_API_BASE__ || ""}/api/mobile/vehicles`).then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(json => { const stamp = json.syncedAt || new Date().toISOString(); setVehicles(json.data); setSyncedAt(stamp); localStorage.setItem(CACHE, JSON.stringify({ vehicles: json.data, syncedAt: stamp })); }).catch(() => undefined); }, [online]);
+  useEffect(() => {
+    if (!online) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    setSyncing(true);
+    setSyncError("");
+    const base = (window.__AUTOASSIST_API_BASE__ || "").replace(/\/$/, "");
+    fetch(`${base}/api/mobile/vehicles`, { signal: controller.signal, cache: "no-store" })
+      .then(async response => {
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(json.message || `Server returned HTTP ${response.status}`);
+        if (!Array.isArray(json.data)) throw new Error("The server returned an unexpected vehicle-data response");
+        return json;
+      })
+      .then(json => {
+        if (cancelled) return;
+        const stamp = json.syncedAt || new Date().toISOString();
+        setVehicles(json.data);
+        setSyncedAt(stamp);
+        localStorage.setItem(CACHE, JSON.stringify({ vehicles: json.data, syncedAt: stamp }));
+      })
+      .catch(error => {
+        if (!cancelled && error.name !== "AbortError") setSyncError(error.message || "Could not connect to the AutoAssist server");
+      })
+      .finally(() => { if (!cancelled) setSyncing(false); });
+    return () => { cancelled = true; controller.abort(); };
+  }, [online, retryCount]);
   const results = useMemo(() => { const q = query.trim().toLowerCase(); if (!q) return []; return vehicles.filter(v => [v.brand, v.model, v.variant, v.engineCode, v.fuelType, v.productionYear].join(" ").toLowerCase().includes(q)).slice(0, 30); }, [vehicles, query]);
   if (!ready) return <main className="min-h-screen bg-slate-950" />;
   return <main className="min-h-screen bg-[#f4f6fa] text-slate-900">
     <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur"><div className="mx-auto max-w-xl"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-600 text-white"><CarFront size={22}/></div><div><h1 className="font-bold">AutoAssist</h1><p className="text-xs text-slate-500">Vehicle service guide</p></div></div><span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${online ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{online ? <Cloud size={14}/> : <CloudOff size={14}/>} {online ? "Online" : "Offline"}</span></div>
     {!selected && <label className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"><Search size={20} className="shrink-0 text-slate-400"/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search make, model, engine…" className="w-full bg-transparent text-base outline-none placeholder:text-slate-400"/><span className="text-xs text-slate-400">{vehicles.length}</span></label>}</div></header>
     <div className="mx-auto max-w-xl px-4 pb-10 pt-5">
+      {!selected && syncError && <div role="alert" className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"><p className="font-semibold">Could not sync cloud vehicle data</p><p className="mt-1 break-words">{syncError}</p><button onClick={() => setRetryCount(value => value + 1)} className="mt-3 rounded-lg bg-rose-700 px-3 py-2 font-semibold text-white">Retry sync</button>{vehicles.length > 0 && <p className="mt-2 text-xs">Showing {vehicles.length} previously synced records saved on this device.</p>}</div>}
+      {!selected && syncing && <p className="mb-3 text-center text-xs text-slate-500">Syncing vehicle data from cloud…</p>}
       {selected ? <><button onClick={() => setSelected(null)} className="mb-4 flex items-center gap-2 py-2 text-sm font-semibold text-blue-700"><ArrowLeft size={18}/> Back to search</button><section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"><div className="bg-gradient-to-br from-slate-900 to-slate-700 p-5 text-white"><div className="flex items-start justify-between"><div><p className="text-xs font-medium uppercase tracking-wider text-slate-300">{selected.brand} · {selected.productionYear || "Year n/a"}</p><h2 className="mt-1 text-2xl font-bold leading-tight">{selected.model}</h2><p className="mt-1 text-slate-300">{selected.variant || "Standard variant"}</p></div><CarFront size={32} className="text-blue-300"/></div><div className="mt-4 flex flex-wrap gap-2">{[selected.engineCode, selected.engineCapacity, selected.fuelType, selected.transmission].filter(Boolean).map((x,i)=><span key={i} className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs">{x}</span>)}</div></div>
       <section className="border-b border-slate-100 p-4"><h3 className="mb-3 flex items-center gap-2 font-bold"><Settings2 size={18} className="text-blue-600"/> Technical specifications</h3><Grid data={selected.technicalSpecifications}/></section>
       <section className="border-b border-slate-100 p-4"><h3 className="mb-3 flex items-center gap-2 font-bold"><Wrench size={18} className="text-blue-600"/> Filters & parts</h3><Grid data={selected.filtersAndParts}/></section>

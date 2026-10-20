@@ -26,7 +26,7 @@ The mobile guide is also available as an installable PWA at `/mobile`. After bui
 
 ### Build a native Android app with Capacitor
 
-Capacitor wraps the mobile guide in an Android shell. The Android Studio project is in `android/`. Set `CAPACITOR_SERVER_URL` to the public HTTPS URL ending in `/mobile`, then run `npm run android:sync` and `npm run android:open`. In Android Studio choose **Build > Generate Signed Bundle / APK > APK** and configure your signing key. Copy the signed APK to `public/downloads/AutoAssist.apk` and redeploy the website; `/download` will then show the APK download button. The app uses the deployed site for its interface and sync; previously synced vehicle records stay in local storage for offline lookup. Do not distribute a release APK built with the default emulator URL.
+Capacitor packages the mobile guide locally, so the app interface starts without loading a web page from Vercel. The Android Studio project is in `android/`. Set `VITE_AUTOASSIST_API_BASE` to the stable HTTPS domain of the deployed app (no path), then run `npm run android:sync` and `npm run android:open`. In Android Studio choose **Build > Generate Signed Bundle / APK > APK** and use the same signing key for updates. Copy the signed APK to `public/downloads/AutoAssist.apk` and redeploy the website; `/download` provides the download button. The app contacts that domain only to sync vehicle records, and previously synced records remain on the device for offline lookup.
 
 ## Build
 

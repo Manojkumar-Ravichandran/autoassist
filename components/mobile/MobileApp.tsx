@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CarFront, Cloud, CloudOff, Search, Settings2, Wrench } from "lucide-react";
 import type { Vehicle } from "@/types/vehicle";
 
+declare global {
+  interface Window { __AUTOASSIST_API_BASE__?: string }
+}
+
 const CACHE = "autoassist-vehicle-cache-v1";
 const title = (key: string) => key.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase());
 function value(v: unknown) { return String(v || "").trim() || "Not specified"; }
@@ -25,7 +29,7 @@ export default function MobileApp() {
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
   }, []);
-  useEffect(() => { if (online) fetch("/api/mobile/vehicles").then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(json => { const stamp = json.syncedAt || new Date().toISOString(); setVehicles(json.data); setSyncedAt(stamp); localStorage.setItem(CACHE, JSON.stringify({ vehicles: json.data, syncedAt: stamp })); }).catch(() => undefined); }, [online]);
+  useEffect(() => { if (online) fetch(`${window.__AUTOASSIST_API_BASE__ || ""}/api/mobile/vehicles`).then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(json => { const stamp = json.syncedAt || new Date().toISOString(); setVehicles(json.data); setSyncedAt(stamp); localStorage.setItem(CACHE, JSON.stringify({ vehicles: json.data, syncedAt: stamp })); }).catch(() => undefined); }, [online]);
   const results = useMemo(() => { const q = query.trim().toLowerCase(); if (!q) return []; return vehicles.filter(v => [v.brand, v.model, v.variant, v.engineCode, v.fuelType, v.productionYear].join(" ").toLowerCase().includes(q)).slice(0, 30); }, [vehicles, query]);
   if (!ready) return <main className="min-h-screen bg-slate-950" />;
   return <main className="min-h-screen bg-[#f4f6fa] text-slate-900">

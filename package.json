@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "mobile:build": "vite build --config vite.mobile.config.ts",
     "android:add": "cap add android",
-    "android:sync": "cap sync android",
+    "android:sync": "npm run mobile:build && cap sync android",
     "android:open": "cap open android"
   },
   "dependencies": {
@@ -29,9 +30,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.1.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^8.3.4"
   }
 }
